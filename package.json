@@ -1,0 +1,9 @@
+{
+  "name": "evil-twin-demo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Evil Twin 钓鱼反诈教学演示（零依赖，仅内存捕获，勿用于非法用途）",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WiFi 认证</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #eef2f6; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  }
+  .card {
+    width: 380px; background: #fff; border-radius: 12px; overflow: hidden;
+    box-shadow: 0 12px 40px rgba(20, 40, 60, .14);
+  }
+  .head {
+    background: linear-gradient(135deg, #1677ff, #0b5ed7);
+    color: #fff; padding: 26px 24px; text-align: center; position: relative;
+  }
+  .head .wifi-icon {
+    width: 46px; height: 46px; border-radius: 50%; background: rgba(255,255,255,.18);
+    display: inline-flex; align-items: center; justify-content: center; font-size: 24px; margin-bottom: 10px;
+  }
+  .head h1 { font-size: 17px; font-weight: 600; letter-spacing: .5px; }
+  .head p { font-size: 12px; opacity: .85; margin-top: 6px; }
+  .ssid-tag {
+    display: inline-block; margin-top: 12px; background: rgba(255,255,255,.16);
+    border: 1px solid rgba(255,255,255,.35); border-radius: 4px;
+    padding: 3px 12px; font-size: 13px; font-family: Consolas, monospace;
+  }
+  .form { padding: 26px 24px 18px; }
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 13px; color: #4a5a6a; margin-bottom: 6px; }
+  .field input {
+    width: 100%; padding: 11px 12px; border: 1px solid #d3dde8; border-radius: 6px;
+    font-size: 14px; outline: none; transition: border-color .15s; color: #223;
+  }
+  .field input:focus { border-color: #1677ff; box-shadow: 0 0 0 3px rgba(22,119,255,.12); }
+  .btn {
+    width: 100%; padding: 12px; border: none; border-radius: 6px; cursor: pointer;
+    background: #1677ff; color: #fff; font-size: 15px; font-weight: 600; letter-spacing: 2px;
+    transition: background .15s;
+  }
+  .btn:hover { background: #0b5ed7; }
+  .btn:disabled { background: #9db8e0; cursor: wait; }
+  .note { text-align: center; font-size: 11px; color: #93a3b5; margin-top: 14px; line-height: 1.7; }
+  .tiny {
+    text-align: center; font-size: 10px; color: #b7c3d0; padding: 8px; letter-spacing: .5px;
+    border-top: 1px dashed #e4ebf2;
+  }
+
+  /* 捕获警示红屏 */
+  .capture {
+    position: fixed; inset: 0; background: #180404; z-index: 10; display: none;
+    align-items: center; justify-content: center; padding: 24px;
+  }
+  .capture.on { display: flex; }
+  .capture .box { max-width: 460px; text-align: center; animation: rise .45s ease; }
+  .capture .siren { font-size: 54px; animation: blink 1s steps(2) infinite; }
+  .capture h2 {
+    color: #ff4444; font-size: 22px; letter-spacing: 4px; margin: 14px 0 8px;
+    text-shadow: 0 0 18px rgba(255,68,68,.7);
+  }
+  .capture .sub { color: #ff9d9d; font-size: 14px; letter-spacing: 1px; }
+  .capture .leaked {
+    margin: 20px auto; background: rgba(255,68,68,.1); border: 1px solid rgba(255,68,68,.4);
+    border-radius: 8px; padding: 14px 20px; font-family: Consolas, monospace; color: #ffb3b3;
+    font-size: 14px; word-break: break-all;
+  }
+  .capture .leaked b { color: #ff4444; }
+  .capture .tips {
+    text-align: left; color: #e8b4b4; font-size: 13px; line-height: 2; margin-top: 8px;
+  }
+  .capture .tips li::marker { color: #ff4444; }
+  .capture .ok {
+    margin-top: 22px; padding: 11px 34px; border: 1px solid rgba(255,68,68,.5);
+    background: rgba(255,68,68,.08); color: #ff9d9d; font-size: 14px; border-radius: 6px; cursor: pointer;
+    letter-spacing: 2px;
+  }
+  .capture .ok:hover { background: rgba(255,68,68,.18); }
+  .capture .meta { margin-top: 18px; font-size: 11px; color: #8a5a5a; font-family: Consolas, monospace; }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  @keyframes blink { 50% { opacity: .25; } }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="head">
+    <div class="wifi-icon">📶</div>
+    <h1>免费 WiFi 快速认证</h1>
+    <p>连接此网络需要验证身份，请按提示操作</p>
+    <span class="ssid-tag" id="ssidTag">FREE-WiFi_5G</span>
+  </div>
+  <form class="form" id="form">
+    <div class="field">
+      <label for="pass">请输入 WiFi 密码</label>
+      <input id="pass" type="password" placeholder="请输入你当前使用的 WiFi 密码" autocomplete="off" required />
+    </div>
+    <button class="btn" id="go" type="submit">连 接 网 络</button>
+    <div class="note">连接后即可免费上网 · 认证信息仅用于本次连接验证</div>
+  </form>
+  <div class="tiny">⚠ 反诈教学演示环境 · 任何输入都不会被真实保存</div>
+</div>
+
+<div class="capture" id="capture">
+  <div class="box">
+    <div class="siren">🚨</div>
+    <h2>密 码 已 被 捕 获</h2>
+    <div class="sub">你输入的内容正在被"攻击者"读取 —— 这就是假热点钓鱼（Evil Twin）</div>
+    <div class="leaked">泄露的密码：<b id="leakedPass">******</b></div>
+    <ul class="tips">
+      <li>这个"免费 WiFi"是攻击者架设的<b>同名假热点</b>，不是真的</li>
+      <li>你在认证页输入的密码，会直接发到攻击者的电脑</li>
+      <li>攻击者可用你的密码登录你的路由器，劫持所有流量</li>
+      <li>公共场所连 WiFi：只连官方认证网络，<b>绝不输入密码</b></li>
+    </ul>
+    <button class="ok" id="ok">我知道了</button>
+    <div class="meta">→ 点击上方"攻击者控制台"链接，看密码是怎么被实时捕获的</div>
+  </div>
+</div>
+
+<script>
+  const ssid = sessionStorage.getItem('et_ssid') || 'FREE-WiFi_5G';
+  document.getElementById('ssidTag').textContent = ssid;
+
+  document.getElementById('form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const pass = document.getElementById('pass').value;
+    if (!pass) return;
+    const go = document.getElementById('go');
+    go.disabled = true;
+    go.textContent = '正在认证…';
+    // 模拟认证过程，然后展示"捕获"后果
+    setTimeout(() => {
+      fetch('/api/capture', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pass }),
+      });
+      document.getElementById('leakedPass').textContent = pass;
+      document.getElementById('capture').classList.add('on');
+    }, 1400);
+  });
+
+  document.getElementById('ok').addEventListener('click', () => {
+    document.getElementById('capture').classList.remove('on');
+    document.getElementById('pass').value = '';
+    const go = document.getElementById('go');
+    go.disabled = false;
+    go.textContent = '连 接 网 络';
+  });
+</script>
+</body>
+</html>
